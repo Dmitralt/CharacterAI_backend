@@ -23,11 +23,12 @@ router.get('/:id', async (req, res) => {
 
 // POST create new session
 router.post('/', async (req, res) => {
-    const { characterId, userName } = req.body;
-    const session = new ChatSession({ characterId, userName, history: [] });
+    const { title, participants } = req.body; // [{ name, type, characterId }]
+    const session = new ChatSession({ title, participants, history: [] });
     await session.save();
     res.status(201).json(session);
 });
+
 
 // PUT add message (append to history)
 router.put('/:id', async (req, res) => {
