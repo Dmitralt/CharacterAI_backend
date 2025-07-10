@@ -1,9 +1,9 @@
-const express = require('express');
-const ChatSession = require('../models/ChatSession');
+import express from 'express';
+import ChatSession from '../models/ChatSession.js';
 
 const router = express.Router();
 
-// GET all sessions 
+// GET all sessions
 router.get('/', async (req, res) => {
     const { characterId, userName } = req.query;
     const filter = {};
@@ -23,12 +23,11 @@ router.get('/:id', async (req, res) => {
 
 // POST create new session
 router.post('/', async (req, res) => {
-    const { title, participants } = req.body; // [{ name, type, characterId }]
+    const { title, participants } = req.body;
     const session = new ChatSession({ title, participants, history: [] });
     await session.save();
     res.status(201).json(session);
 });
-
 
 // PUT add message (append to history)
 router.put('/:id', async (req, res) => {
@@ -47,4 +46,4 @@ router.delete('/:id', async (req, res) => {
     res.sendStatus(204);
 });
 
-module.exports = router;
+export default router;

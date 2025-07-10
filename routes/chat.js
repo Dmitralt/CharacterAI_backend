@@ -1,22 +1,13 @@
-const express = require('express');
-const Character = require('../models/Character');
-const ChatSession = require('../models/ChatSession');
+import express from 'express';
+import Character from '../models/Character.js';
+import ChatSession from '../models/ChatSession.js';
+import { fetchWithRetry } from '../utils/networkUtils.js';
+
+
 
 const router = express.Router();
 
-async function fetchWithRetry(url, options, retries = 3, delay = 500) {
-    for (let i = 0; i < retries; i++) {
-        try {
-            const res = await fetch(url, options);
-            if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-            return res;
-        } catch (err) {
-            console.warn(`Fetch attempt ${i + 1} failed: ${err.message}`);
-            if (i < retries - 1) await new Promise(r => setTimeout(r, delay));
-        }
-    }
-    throw new Error(`Failed to fetch after ${retries} attempts`);
-}
+
 
 router.post('/:sessionId/summarize', async (req, res) => {
     try {
@@ -195,4 +186,5 @@ router.post('/:sessionId/message', async (req, res) => {
     }
 });
 
-module.exports = router;
+export default router;
+

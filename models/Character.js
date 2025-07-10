@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const characterSchema = new mongoose.Schema({
     name: { type: String, required: true },
@@ -11,6 +11,8 @@ const characterSchema = new mongoose.Schema({
     avatar_url: String
 });
 
+const Character = mongoose.model('Character', characterSchema);
 
-module.exports = mongoose.model('Character', characterSchema);
+export default Character;
+
 
