@@ -1,0 +1,246 @@
+{
+	"info": {
+		"_postman_id": "7e461484-fd7f-4777-bea5-a610586163a3",
+		"name": "Character_AI",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "42569535"
+	},
+	"item": [
+		{
+			"name": "GET ALL characters",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/api/characters/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"characters",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET character by ID",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/api/characters/6859742ce13ec9870e9dc1d2",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"characters",
+						"6859742ce13ec9870e9dc1d2"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "CREATE character",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"name\": \"Лилит\",\r\n    \"description\": \"изгнаная дворянка, \",\r\n    \"personality\": \"властная, брезгливая\",\r\n    \"role\": \"напарник в приключениях\",\r\n    \"background\": \"из Маравии- восточной пустынной стране\",\r\n    \"speaking_style\": \"властно\",\r\n    \"goals\": \"заполучить власть над всеми\",\r\n    \"avatar_url\": \"/avatars/Lilit.jpg\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/characters",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"characters"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET avatar",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/avatars/Lilit.jpg",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"avatars",
+						"Lilit.jpg"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET landscape",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000/landscape/desert.jpg",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"landscape",
+						"desert.jpg"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET ALL sessions",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/sessions/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"sessions",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "CREATE session",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"title\": \"Первая беседа\",\r\n  \"participants\": [\r\n    { \"name\": \"Пользователь\", \"type\": \"user\" },\r\n    { \"name\": \"Джарвис\", \"type\": \"ai\", \"characterId\": \"685878dadb27b92e8d0ed778\" }\r\n  ]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/sessions/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"sessions",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Dialogue",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"speaker\": \"Пользователь\",\r\n  \"message\": \"куда пойдем?\"\r\n}\r\n\r\n",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/chat/686ce30a7ffb290537e3509f/message",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"chat",
+						"686ce30a7ffb290537e3509f",
+						"message"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "summarizs",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "\r\n{}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:3000/api/chat/686cd2f92e22878cb2b26a10/summarize",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"path": [
+						"api",
+						"chat",
+						"686cd2f92e22878cb2b26a10",
+						"summarize"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

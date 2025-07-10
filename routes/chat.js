@@ -4,6 +4,20 @@ const ChatSession = require('../models/ChatSession');
 
 const router = express.Router();
 
+async function fetchWithRetry(url, options, retries = 3, delay = 500) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const res = await fetch(url, options);
+            if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+            return res;
+        } catch (err) {
+            console.warn(`Fetch attempt ${i + 1} failed: ${err.message}`);
+            if (i < retries - 1) await new Promise(r => setTimeout(r, delay));
+        }
+    }
+    throw new Error(`Failed to fetch after ${retries} attempts`);
+}
+
 router.post('/:sessionId/summarize', async (req, res) => {
     try {
         const session = await ChatSession.findById(req.params.sessionId);
@@ -19,7 +33,7 @@ ${historyText}
 Сделай краткое описание разговора, не более 100 слов.
 `;
 
-        const response = await fetch('http://127.0.0.1:1234/v1/chat/completions', {
+        const response = await fetchWithRetry('http://127.0.0.1:1234/v1/chat/completions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -48,6 +62,11 @@ ${historyText}
 });
 
 router.post('/:sessionId/message', async (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
     const { sessionId } = req.params;
     const { speaker, message } = req.body;
 
@@ -55,28 +74,10 @@ router.post('/:sessionId/message', async (req, res) => {
 
     try {
         const session = await ChatSession.findById(sessionId).populate('participants.characterId');
-        if (!session) return res.status(404).json({ error: 'Session not found' });
-
-        console.log('=== Loaded AI Participants ===');
-        for (const p of session.participants.filter(p => p.type === 'ai')) {
-            console.log({
-                name: p.name,
-                characterId: p.characterId?._id,
-                characterName: p.characterId?.name,
-                description: p.characterId?.description,
-                speakingStyle: p.characterId?.speaking_style
-            });
-        }
+        if (!session) return res.write(`event: error\ndata: Session not found\n\n`);
 
         const sender = session.participants.find(p => p.name === speaker);
-        if (!sender) return res.status(400).json({ error: 'Invalid speaker' });
-
-        // Добавляем сообщение игрока в историю (без имени в контенте!)
-        session.history.push({
-            speaker,
-            role: sender.type === 'ai' ? `ai:${sender.characterId._id}` : 'user',
-            content: message
-        });
+        if (!sender) return res.write(`event: error\ndata: Invalid speaker\n\n`);
 
         const aiParticipants = session.participants.filter(p => p.type === 'ai');
         const aiReplies = [];
@@ -93,78 +94,105 @@ router.post('/:sessionId/message', async (req, res) => {
 
 Сейчас твой ход. Ответь как ${character.name}, основываясь на истории ниже.
 **Имя персонажа уже добавлено перед сообщением, не дублируй его в ответе.**
-`.trim();
+            `.trim();
 
-            // История без "speaker:" префикса в content
             const recentHistory = session.history.slice(-10).map(m => ({
                 role: m.role.startsWith('ai:') ? 'assistant' : 'user',
                 content: m.content
             }));
 
-            console.log(`\n=== System prompt for ${character.name} ===\n`);
-            console.log(systemPrompt);
-
             const payload = {
                 model: 'google/gemma-3-1b',
                 messages: [
                     { role: 'system', content: systemPrompt },
-                    ...recentHistory
+                    ...recentHistory,
+                    { role: 'user', content: message }
                 ],
-                temperature: 0.7
+                temperature: 0.7,
+                stream: true
             };
 
-            const getReply = async () => {
-                try {
-                    const response = await fetch('http://127.0.0.1:1234/v1/chat/completions', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    const data = await response.json();
-                    return data.choices?.[0]?.message?.content?.trim() || null;
-                } catch (err) {
-                    console.error(`[ERROR] Failed to get reply from ${character.name}:`, err);
-                    return null;
-                }
-            };
-
-            let reply = await getReply();
-
-            if (!reply) {
-                console.warn(`[WARN] Empty reply from ${character.name}, retrying...`);
-                await sleep(300);
-                reply = await getReply();
+            let response;
+            try {
+                response = await fetchWithRetry('http://127.0.0.1:1234/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } catch (err) {
+                console.error(`AI fetch failed for character ${character.name}:`, err.message);
+                res.write(`event: error\ndata: Failed to get response for ${character.name}\n\n`);
+                continue;
             }
 
-            if (reply) {
-                // Не добавляем имя в контент — оно уже есть в speaker
-                session.history.push({
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+
+            let fullReply = '';
+            res.write(`event: character\n`);
+            res.write(`data: ${character.name}\n\n`);
+
+            while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n').filter(line => line.startsWith('data: '));
+
+                for (const line of lines) {
+                    const data = line.replace(/^data:\s*/, '').trim();
+                    if (data === '[DONE]') {
+                        res.write(`event: end\n`);
+                        res.write(`data: ${character.name}\n\n`);
+                        break;
+                    }
+
+                    try {
+                        const json = JSON.parse(data);
+                        const token = json.choices?.[0]?.delta?.content;
+                        if (token) {
+                            fullReply += token;
+                            res.write(`data: ${token}\n\n`);
+                        }
+                    } catch (e) {
+                        console.warn('Bad stream chunk:', data);
+                    }
+                }
+            }
+
+            if (fullReply) {
+                aiReplies.push({
                     speaker: character.name,
                     role: `ai:${character._id}`,
-                    content: reply
+                    content: fullReply
                 });
-                aiReplies.push({ name: character.name, reply });
-            } else {
-                console.warn(`[WARN] Still no reply from ${character.name}`);
             }
 
-            await sleep(300); // Пауза перед следующим AI
+            await sleep(200);
         }
 
-        await session.save();
-        res.json({ replies: aiReplies });
+        if (aiReplies.length > 0) {
+            session.history.push({
+                speaker,
+                role: sender.type === 'ai' ? `ai:${sender.characterId._id}` : 'user',
+                content: message
+            });
+            for (const reply of aiReplies) {
+                session.history.push(reply);
+            }
+            await session.save();
+            res.write(`event: complete\ndata: done\n\n`);
+        } else {
+            res.write(`event: error\ndata: No AI responded. User message not saved.\n\n`);
+        }
+
+        res.end();
 
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Message handling failed', message: err.message });
+        res.write(`event: error\ndata: ${err.message}\n\n`);
+        res.end();
     }
 });
-
-
-
-
-
-
 
 module.exports = router;
